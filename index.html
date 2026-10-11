@@ -101,7 +101,8 @@
             color: #fff;
         }
         .btn-primary:active { transform: scale(0.98); }
-        .btn-primary:disabled {
+        .btn-primary:disabled,
+        .btn-disabled {
             opacity: 0.5;
             cursor: not-allowed;
         }
@@ -507,9 +508,12 @@
             </div>
             
             <div class="card">
-                <button class="btn btn-success" id="send-btn" onclick="sendCoord()" disabled>
+                <button class="btn btn-success" id="send-btn" onclick="sendCoord()">
                     🚀 上传标记点
                 </button>
+                <div class="device-info" id="send-hint" style="margin-top: 8px; color: #ff6b6b; font-size: 13px;">
+                    请先获取坐标
+                </div>
                 <div class="device-info" id="send-result"></div>
             </div>
             
@@ -556,16 +560,39 @@
         
         function updateSendBtnState() {
             const btn = document.getElementById('send-btn');
+            const hint = document.getElementById('send-hint');
+            
             if (currentLat === null) {
-                btn.disabled = true;
+                btn.classList.add('btn-disabled');
+                btn.textContent = '🚀 上传标记点';
+                hint.textContent = '请先获取坐标（点击上方按钮）';
+                hint.style.color = '#ff6b6b';
                 return;
             }
+            
             if (coordMode === 'ble') {
-                btn.disabled = !bleDevice || !bleDevice.gatt.connected;
+                const connected = bleDevice && bleDevice.gatt.connected;
+                btn.classList.toggle('btn-disabled', !connected);
+                btn.textContent = connected ? '🚀 发送到设备' : '🚀 上传标记点';
+                hint.textContent = connected ? '就绪：点击发送坐标到设备' : '请先通过蓝牙连接设备';
+                hint.style.color = connected ? '#4ecdc4' : '#ff6b6b';
             } else {
                 const deviceId = document.getElementById('wifi-device-id').value.trim();
                 const serverUrl = document.getElementById('wifi-server-url').value.trim();
-                btn.disabled = !deviceId || !serverUrl;
+                const ready = deviceId && serverUrl;
+                btn.classList.toggle('btn-disabled', !ready);
+                btn.textContent = '🚀 上传标记点';
+                
+                if (!deviceId) {
+                    hint.textContent = '请填写设备 ID（设备屏幕上查看）';
+                    hint.style.color = '#ff6b6b';
+                } else if (!serverUrl) {
+                    hint.textContent = '请填写服务器地址';
+                    hint.style.color = '#ff6b6b';
+                } else {
+                    hint.textContent = '就绪：点击上传标记点到服务器';
+                    hint.style.color = '#4ecdc4';
+                }
             }
         }
         
@@ -890,10 +917,26 @@
         }
         
         async function sendCoord() {
-            if (currentLat === null) return;
-            
             const resultEl = document.getElementById('send-result');
             resultEl.textContent = '';
+            
+            if (currentLat === null) {
+                showToast('请先获取坐标');
+                return;
+            }
+            
+            if (coordMode === 'wifi') {
+                const deviceId = document.getElementById('wifi-device-id').value.trim();
+                const serverUrl = document.getElementById('wifi-server-url').value.trim();
+                if (!deviceId) {
+                    showToast('请填写设备 ID');
+                    return;
+                }
+                if (!serverUrl) {
+                    showToast('请填写服务器地址');
+                    return;
+                }
+            }
             
             if (coordMode === 'ble') {
                 // 蓝牙模式
@@ -971,6 +1014,7 @@
             const serverUrlEl = document.getElementById('wifi-server-url');
             if (deviceIdEl) deviceIdEl.addEventListener('input', updateSendBtnState);
             if (serverUrlEl) serverUrlEl.addEventListener('input', updateSendBtnState);
+            updateSendBtnState();
         });
         
         async function sendWifiConfig() {
