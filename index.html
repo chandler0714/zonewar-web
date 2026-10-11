@@ -462,7 +462,11 @@
                     <div class="coord-value" id="coord-value">--.--, --.--</div>
                     <div class="coord-label">当前坐标 (纬度, 经度)</div>
                 </div>
-                <button class="btn btn-secondary" onclick="getLocation()">
+                <div class="status-row" style="margin: 12px 0;">
+                    <span class="status-label">GPS 状态</span>
+                    <span class="status-value disconnected" id="gps-status">未获取</span>
+                </div>
+                <button class="btn btn-secondary" id="get-loc-btn" onclick="getLocation()">
                     📍 获取当前位置
                 </button>
             </div>
@@ -757,6 +761,9 @@
                 return;
             }
             
+            const btn = document.getElementById('get-loc-btn');
+            btn.disabled = true;
+            btn.textContent = '📍 获取中...';
             document.getElementById('gps-status').textContent = '获取中...';
             document.getElementById('gps-status').className = 'status-value';
             
@@ -768,19 +775,24 @@
                         `${currentLat.toFixed(6)}, ${currentLng.toFixed(6)}`;
                     document.getElementById('gps-status').textContent = '已获取';
                     document.getElementById('gps-status').className = 'status-value connected';
-                    
-                    if (coordChar && bleDevice && bleDevice.gatt.connected) {
-                        document.getElementById('send-btn').disabled = false;
-                    }
+                    btn.textContent = '📍 重新获取位置';
+                    btn.disabled = false;
                     updateSendBtnState();
                     showToast('坐标已获取');
                 },
                 (err) => {
+                    console.warn('Geolocation error:', err);
+                    let msg = '定位失败';
+                    if (err.code === 1) msg = '定位权限被拒绝，请在设置中开启';
+                    else if (err.code === 2) msg = '定位不可用';
+                    else if (err.code === 3) msg = '定位超时，请重试';
                     document.getElementById('gps-status').textContent = '失败';
                     document.getElementById('gps-status').className = 'status-value disconnected';
-                    showToast('定位失败: ' + err.message);
+                    btn.textContent = '📍 获取当前位置';
+                    btn.disabled = false;
+                    showToast(msg);
                 },
-                { enableHighAccuracy: true, timeout: 10000 }
+                { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
             );
         }
         
