@@ -143,6 +143,34 @@
             margin-top: 4px;
         }
         
+        .mode-switch {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        .mode-btn {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid #2a2a4a;
+            background: #141428;
+            color: #8892b0;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .mode-btn.active {
+            border-color: #4ecdc4;
+            color: #4ecdc4;
+            background: rgba(78, 205, 196, 0.1);
+        }
+        .mode-content {
+            display: none;
+        }
+        .mode-content.active {
+            display: block;
+        }
+        
         .device-info {
             text-align: center;
             color: #8892b0;
@@ -398,18 +426,35 @@
         
         <!-- 坐标发送 Tab -->
         <div id="tab-coord" class="tab-content">
-            <div class="card">
-                <div class="status-row">
-                    <span class="status-label">设备连接</span>
-                    <span class="status-value disconnected" id="coord-ble-status">未连接</span>
+            <!-- 模式切换 -->
+            <div class="mode-switch">
+                <button class="mode-btn active" id="mode-ble" onclick="switchCoordMode('ble')">🔵 蓝牙模式</button>
+                <button class="mode-btn" id="mode-wifi" onclick="switchCoordMode('wifi')">📶 WiFi 模式</button>
+            </div>
+            
+            <!-- BLE 模式 -->
+            <div id="coord-mode-ble" class="mode-content active">
+                <div class="card">
+                    <div class="status-row">
+                        <span class="status-label">设备连接</span>
+                        <span class="status-value disconnected" id="coord-ble-status">未连接</span>
+                    </div>
+                    <button class="btn btn-primary" id="coord-connect-btn" onclick="connectDevice()">
+                        🔗 连接设备（蓝牙）
+                    </button>
                 </div>
-                <div class="status-row">
-                    <span class="status-label">GPS 状态</span>
-                    <span class="status-value disconnected" id="gps-status">未获取</span>
+                <p class="hint">仅支持安卓 Chrome 浏览器，iOS 请使用 WiFi 模式</p>
+            </div>
+            
+            <!-- WiFi 模式 -->
+            <div id="coord-mode-wifi" class="mode-content">
+                <div class="card">
+                    <label class="input-label">设备 ID（设备屏幕上可查看）</label>
+                    <input type="text" id="wifi-device-id" placeholder="如：98c377f4ef58" maxlength="12">
+                    <label class="input-label">服务器地址</label>
+                    <input type="text" id="wifi-server-url" value="http://47.84.88.8:5000">
                 </div>
-                <button class="btn btn-primary" id="coord-connect-btn" onclick="connectDevice()">
-                    🔗 连接设备
-                </button>
+                <p class="hint">手机和设备无需在同一网络，通过服务器中转坐标</p>
             </div>
             
             <div class="card">
@@ -424,19 +469,21 @@
             
             <div class="card">
                 <button class="btn btn-success" id="send-btn" onclick="sendCoord()" disabled>
-                    🚀 发送坐标到设备
+                    🚀 上传标记点
                 </button>
-                <div class="device-info" id="device-info"></div>
+                <div class="device-info" id="send-result"></div>
             </div>
             
             <p class="hint">
                 使用方法：
                 <br>
-                1. 设备进入「新增标记点」页面
+                1. 点击「获取当前位置」授权定位
                 <br>
-                2. 点击连接设备，选择 ZoneWar
+                2. 选择模式：蓝牙（安卓）或 WiFi（全平台）
                 <br>
-                3. 获取当前位置后发送坐标
+                3. 点击「上传标记点」发送到设备
+                <br>
+                4. 设备上确认后标记点生效
             </p>
         </div>
     </div>
@@ -457,6 +504,31 @@
         let currentLat = null;
         let currentLng = null;
         let currentTab = 'wifi';
+        let coordMode = 'ble';
+        
+        function switchCoordMode(mode) {
+            coordMode = mode;
+            document.getElementById('mode-ble').classList.toggle('active', mode === 'ble');
+            document.getElementById('mode-wifi').classList.toggle('active', mode === 'wifi');
+            document.getElementById('coord-mode-ble').classList.toggle('active', mode === 'ble');
+            document.getElementById('coord-mode-wifi').classList.toggle('active', mode === 'wifi');
+            updateSendBtnState();
+        }
+        
+        function updateSendBtnState() {
+            const btn = document.getElementById('send-btn');
+            if (currentLat === null) {
+                btn.disabled = true;
+                return;
+            }
+            if (coordMode === 'ble') {
+                btn.disabled = !bleDevice || !bleDevice.gatt.connected;
+            } else {
+                const deviceId = document.getElementById('wifi-device-id').value.trim();
+                const serverUrl = document.getElementById('wifi-server-url').value.trim();
+                btn.disabled = !deviceId || !serverUrl;
+            }
+        }
         
         function switchTab(tab) {
             currentTab = tab;
@@ -700,6 +772,7 @@
                     if (coordChar && bleDevice && bleDevice.gatt.connected) {
                         document.getElementById('send-btn').disabled = false;
                     }
+                    updateSendBtnState();
                     showToast('坐标已获取');
                 },
                 (err) => {
@@ -712,18 +785,88 @@
         }
         
         async function sendCoord() {
-            if (!coordChar || currentLat === null) return;
+            if (currentLat === null) return;
             
-            try {
-                const data = `${currentLat.toFixed(7)},${currentLng.toFixed(7)}`;
-                const encoder = new TextEncoder();
-                await coordChar.writeValue(encoder.encode(data));
-                showToast('坐标已发送！');
-            } catch (err) {
-                console.error(err);
-                showToast('发送失败: ' + err.message);
+            const resultEl = document.getElementById('send-result');
+            resultEl.textContent = '';
+            
+            if (coordMode === 'ble') {
+                // 蓝牙模式
+                if (!coordChar) {
+                    showToast('请先连接设备');
+                    return;
+                }
+                try {
+                    const data = `${currentLat.toFixed(7)},${currentLng.toFixed(7)}`;
+                    const encoder = new TextEncoder();
+                    await coordChar.writeValue(encoder.encode(data));
+                    showToast('坐标已发送！');
+                } catch (err) {
+                    console.error(err);
+                    showToast('发送失败: ' + err.message);
+                }
+            } else {
+                // WiFi 模式 - 直接调用服务器 API
+                const deviceId = document.getElementById('wifi-device-id').value.trim();
+                const serverUrl = document.getElementById('wifi-server-url').value.trim();
+                
+                if (!deviceId) {
+                    showToast('请输入设备 ID');
+                    return;
+                }
+                
+                const btn = document.getElementById('send-btn');
+                btn.disabled = true;
+                btn.textContent = '上传中...';
+                
+                try {
+                    const resp = await fetch(serverUrl + '/api/markers', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            device_id: deviceId,
+                            lat: currentLat,
+                            lng: currentLng
+                        })
+                    });
+                    
+                    const data = await resp.json();
+                    
+                    if (resp.ok) {
+                        let msg = '上传成功！';
+                        if (data.territory_created) {
+                            msg += ' 新领地已创建';
+                        }
+                        if (data.new_area !== undefined) {
+                            msg += ` 面积: ${data.new_area.toFixed(2)}㎡`;
+                        }
+                        resultEl.textContent = msg;
+                        resultEl.style.color = '#4ecdc4';
+                        showToast(msg);
+                    } else {
+                        resultEl.textContent = '上传失败: ' + (data.error || resp.status);
+                        resultEl.style.color = '#ff6b6b';
+                        showToast('上传失败');
+                    }
+                } catch (err) {
+                    console.error(err);
+                    resultEl.textContent = '网络错误: ' + err.message;
+                    resultEl.style.color = '#ff6b6b';
+                    showToast('网络错误');
+                }
+                
+                btn.textContent = '🚀 上传标记点';
+                updateSendBtnState();
             }
         }
+        
+        // 监听输入变化
+        document.addEventListener('DOMContentLoaded', () => {
+            const deviceIdEl = document.getElementById('wifi-device-id');
+            const serverUrlEl = document.getElementById('wifi-server-url');
+            if (deviceIdEl) deviceIdEl.addEventListener('input', updateSendBtnState);
+            if (serverUrlEl) serverUrlEl.addEventListener('input', updateSendBtnState);
+        });
         
         async function sendWifiConfig() {
             if (!wifiChar) {
