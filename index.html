@@ -171,6 +171,27 @@
             display: block;
         }
         
+        .manual-toggle {
+            text-align: center;
+            margin-top: 10px;
+            color: #8892b0;
+            font-size: 13px;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+        .manual-toggle:hover {
+            color: #4ecdc4;
+        }
+        .manual-input-box {
+            display: none;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #2a2a4a;
+        }
+        .manual-input-box.show {
+            display: block;
+        }
+        
         .device-info {
             text-align: center;
             color: #8892b0;
@@ -469,6 +490,20 @@
                 <button class="btn btn-secondary" id="get-loc-btn" onclick="getLocation()">
                     📍 获取当前位置
                 </button>
+                
+                <div class="manual-toggle" onclick="toggleManualInput()">
+                    <span id="manual-toggle-text">定位失败？点此手动输入</span>
+                </div>
+                
+                <div id="manual-input" class="manual-input-box">
+                    <label class="input-label">纬度</label>
+                    <input type="number" step="0.000001" id="manual-lat" placeholder="如：39.9042" oninput="onManualInput()">
+                    <label class="input-label">经度</label>
+                    <input type="number" step="0.000001" id="manual-lng" placeholder="如：116.4074" oninput="onManualInput()">
+                    <p class="hint" style="margin-top: 8px; margin-bottom: 0;">
+                        可从苹果地图/高德地图长按分享位置，复制经纬度粘贴到这里
+                    </p>
+                </div>
             </div>
             
             <div class="card">
@@ -755,6 +790,29 @@
             }
         }
         
+        function toggleManualInput() {
+            const box = document.getElementById('manual-input');
+            const toggleText = document.getElementById('manual-toggle-text');
+            box.classList.toggle('show');
+            toggleText.textContent = box.classList.contains('show') ? 
+                '收起手动输入' : '定位失败？点此手动输入';
+        }
+        
+        function onManualInput() {
+            const lat = parseFloat(document.getElementById('manual-lat').value);
+            const lng = parseFloat(document.getElementById('manual-lng').value);
+            
+            if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
+                currentLat = lat;
+                currentLng = lng;
+                document.getElementById('coord-value').textContent = 
+                    `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+                document.getElementById('gps-status').textContent = '手动输入';
+                document.getElementById('gps-status').className = 'status-value connected';
+                updateSendBtnState();
+            }
+        }
+        
         function getLocation() {
             if (!navigator.geolocation) {
                 showToast('浏览器不支持定位');
@@ -767,33 +825,68 @@
             document.getElementById('gps-status').textContent = '获取中...';
             document.getElementById('gps-status').className = 'status-value';
             
-            navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                    currentLat = pos.coords.latitude;
-                    currentLng = pos.coords.longitude;
-                    document.getElementById('coord-value').textContent = 
-                        `${currentLat.toFixed(6)}, ${currentLng.toFixed(6)}`;
-                    document.getElementById('gps-status').textContent = '已获取';
-                    document.getElementById('gps-status').className = 'status-value connected';
-                    btn.textContent = '📍 重新获取位置';
-                    btn.disabled = false;
-                    updateSendBtnState();
-                    showToast('坐标已获取');
-                },
-                (err) => {
-                    console.warn('Geolocation error:', err);
-                    let msg = '定位失败';
-                    if (err.code === 1) msg = '定位权限被拒绝，请在设置中开启';
-                    else if (err.code === 2) msg = '定位不可用';
-                    else if (err.code === 3) msg = '定位超时，请重试';
-                    document.getElementById('gps-status').textContent = '失败';
-                    document.getElementById('gps-status').className = 'status-value disconnected';
-                    btn.textContent = '📍 获取当前位置';
-                    btn.disabled = false;
-                    showToast(msg);
-                },
-                { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-            );
+            let gotResult = false;
+            let watchId = null;
+            
+            // 成功回调
+            function onSuccess(pos) {
+                if (gotResult) return;
+                gotResult = true;
+                if (watchId !== null) {
+                    navigator.geolocation.clearWatch(watchId);
+                    watchId = null;
+                }
+                
+                currentLat = pos.coords.latitude;
+                currentLng = pos.coords.longitude;
+                document.getElementById('coord-value').textContent = 
+                    `${currentLat.toFixed(6)}, ${currentLng.toFixed(6)}`;
+                document.getElementById('gps-status').textContent = '已获取';
+                document.getElementById('gps-status').className = 'status-value connected';
+                btn.textContent = '📍 重新获取位置';
+                btn.disabled = false;
+                updateSendBtnState();
+                showToast('坐标已获取');
+            }
+            
+            // 失败回调
+            function onError(err) {
+                if (gotResult) return;
+                gotResult = true;
+                if (watchId !== null) {
+                    navigator.geolocation.clearWatch(watchId);
+                    watchId = null;
+                }
+                
+                console.warn('Geolocation error:', err);
+                let msg = '定位失败';
+                if (err.code === 1) msg = '定位权限被拒绝，请在设置中开启';
+                else if (err.code === 2) msg = '定位不可用，请检查手机定位服务';
+                else if (err.code === 3) msg = '定位超时，可手动输入坐标';
+                document.getElementById('gps-status').textContent = '失败';
+                document.getElementById('gps-status').className = 'status-value disconnected';
+                btn.textContent = '📍 获取当前位置';
+                btn.disabled = false;
+                showToast(msg);
+            }
+            
+            // 先用 getCurrentPosition 快速尝试
+            try {
+                navigator.geolocation.getCurrentPosition(onSuccess, () => {
+                    // 失败了改用 watchPosition，iOS 上有时候这个更可靠
+                    try {
+                        watchId = navigator.geolocation.watchPosition(
+                            onSuccess,
+                            onError,
+                            { enableHighAccuracy: true, timeout: 20000, maximumAge: 60000 }
+                        );
+                    } catch(e) {
+                        onError({ code: 2, message: e.message });
+                    }
+                }, { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 });
+            } catch(e) {
+                onError({ code: 2, message: e.message });
+            }
         }
         
         async function sendCoord() {
