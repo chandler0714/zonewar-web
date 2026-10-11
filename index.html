@@ -199,6 +199,37 @@
             margin-top: 8px;
             line-height: 1.5;
         }
+        .ios-notice {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.15));
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            display: flex;
+            gap: 14px;
+            align-items: flex-start;
+        }
+        .notice-icon {
+            font-size: 32px;
+            flex-shrink: 0;
+        }
+        .notice-title {
+            font-weight: 600;
+            font-size: 15px;
+            margin-bottom: 8px;
+            color: #fff;
+        }
+        .notice-text {
+            font-size: 13px;
+            color: #a8b2d1;
+            line-height: 1.7;
+        }
+        .notice-text ol {
+            margin: 8px 0 0 20px;
+        }
+        .notice-text li {
+            margin-bottom: 4px;
+        }
+        .notice-text strong {
+            color: #667eea;
+        }
         
         /* WiFi 列表 */
         .wifi-scan-header {
@@ -307,6 +338,22 @@
         
         <!-- Wi-Fi 配网 Tab -->
         <div id="tab-wifi" class="tab-content active">
+            <div class="card ios-notice">
+                <div class="notice-icon">📱</div>
+                <div class="notice-content">
+                    <div class="notice-title">iPhone / iPad 用户请看这里</div>
+                    <div class="notice-text">
+                        iOS 不支持网页蓝牙配网，请使用<strong>热点配网</strong>：
+                        <ol>
+                            <li>设备开机后，屏幕显示 Wi-Fi Setup 页面</li>
+                            <li>手机 Wi-Fi 连接热点 <strong>ZoneWar-XXXX</strong></li>
+                            <li>浏览器自动弹出配网页面，或手动访问 <strong>192.168.4.1</strong></li>
+                            <li>选择家里的 Wi-Fi，输入密码，点击连接</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+            
             <div class="card">
                 <div class="status-row">
                     <span class="status-label">设备连接</span>
