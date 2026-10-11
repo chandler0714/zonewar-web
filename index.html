@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ZoneWar - 领地战争</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            font-size: 24px;
+            margin-bottom: 8px;
+            background: linear-gradient(90deg, #ff6b6b, #4ecdc4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .subtitle {
+            text-align: center;
+            color: #8892b0;
+            font-size: 14px;
+            margin-bottom: 24px;
+        }
+        /* Tabs */
+        .tabs {
+            display: flex;
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            padding: 4px;
+            margin-bottom: 20px;
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            background: transparent;
+            color: #8892b0;
+            font-size: 14px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .tab-btn.active {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: #fff;
+            font-weight: 600;
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        
+        .card {
+            background: rgba(255,255,255,0.05);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 16px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .status-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .status-label {
+            color: #8892b0;
+            font-size: 14px;
+        }
+        .status-value {
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .status-value.connected { color: #4ecdc4; }
+        .status-value.disconnected { color: #ff6b6b; }
+        
+        .btn {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 12px;
+        }
+        .btn:last-child { margin-bottom: 0; }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: #fff;
+        }
+        .btn-primary:active { transform: scale(0.98); }
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .btn-secondary {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        .btn-secondary:active { transform: scale(0.98); }
+        .btn-success {
+            background: linear-gradient(135deg, #4ecdc4, #44a08d);
+            color: #fff;
+        }
+        .btn-danger {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a5a);
+            color: #fff;
+        }
+        .btn-small {
+            padding: 10px 16px;
+            font-size: 14px;
+            margin-bottom: 12px;
+            width: auto;
+            display: inline-block;
+        }
+        
+        .coord-display {
+            text-align: center;
+            padding: 16px 0;
+        }
+        .coord-value {
+            font-size: 20px;
+            font-weight: 700;
+            font-family: 'SF Mono', Monaco, monospace;
+            color: #4ecdc4;
+        }
+        .coord-label {
+            color: #8892b0;
+            font-size: 12px;
+            margin-top: 4px;
+        }
+        
+        .device-info {
+            text-align: center;
+            color: #8892b0;
+            font-size: 13px;
+            margin-top: 8px;
+        }
+        .team-red { color: #ff6b6b; }
+        .team-blue { color: #4ecdc4; }
+        
+        input {
+            width: 100%;
+            padding: 14px;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            background: rgba(255,255,255,0.05);
+            color: #fff;
+            font-size: 15px;
+            margin-bottom: 12px;
+        }
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        input::placeholder {
+            color: #5a6a8a;
+        }
+        .input-label {
+            display: block;
+            color: #8892b0;
+            font-size: 13px;
+            margin-bottom: 6px;
+        }
+        
+        .toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100px);
+            background: rgba(0,0,0,0.8);
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: transform 0.3s;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); }
+        
+        .hint {
+            color: #8892b0;
+            font-size: 12px;
+            text-align: center;
+            margin-top: 8px;
+            line-height: 1.5;
+        }
+        
+        /* WiFi 列表 */
+        .wifi-scan-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .wifi-scan-title {
+            color: #8892b0;
+            font-size: 13px;
+        }
+        .wifi-scan-btn {
+            padding: 6px 12px;
+            font-size: 12px;
+            border-radius: 8px;
+            background: rgba(102, 126, 234, 0.2);
+            color: #a5b4fc;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .wifi-scan-btn:active { transform: scale(0.95); }
+        .wifi-scan-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .wifi-list {
+            max-height: 240px;
+            overflow-y: auto;
+            margin-bottom: 12px;
+            border-radius: 10px;
+            background: rgba(0,0,0,0.2);
+            display: none;
+        }
+        .wifi-list.show { display: block; }
+        .wifi-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .wifi-item:last-child { border-bottom: none; }
+        .wifi-item:active { background: rgba(102, 126, 234, 0.2); }
+        .wifi-item-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .wifi-item-ssid {
+            font-size: 14px;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .wifi-item-desc {
+            font-size: 11px;
+            color: #8892b0;
+            margin-top: 2px;
+        }
+        .wifi-signal {
+            margin-left: 10px;
+            font-size: 16px;
+        }
+        .wifi-lock {
+            margin-left: 8px;
+            font-size: 12px;
+            color: #8892b0;
+        }
+        
+        .wifi-scan-status {
+            text-align: center;
+            padding: 20px;
+            color: #8892b0;
+            font-size: 13px;
+        }
+        .wifi-scan-status .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255,255,255,0.1);
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚔️ ZoneWar</h1>
+        <p class="subtitle">领地战争 - AI Passport 配套工具</p>
+        
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('wifi')">📶 Wi-Fi 配网</button>
+            <button class="tab-btn" onclick="switchTab('coord')">📍 坐标发送</button>
+        </div>
+        
+        <!-- Wi-Fi 配网 Tab -->
+        <div id="tab-wifi" class="tab-content active">
+            <div class="card">
+                <div class="status-row">
+                    <span class="status-label">设备连接</span>
+                    <span class="status-value disconnected" id="wifi-ble-status">未连接</span>
+                </div>
+                <button class="btn btn-primary" id="wifi-connect-btn" onclick="connectDevice()">
+                    🔗 连接设备
+                </button>
+            </div>
+            
+            <div class="card">
+                <div class="wifi-scan-header">
+                    <span class="wifi-scan-title">附近 Wi-Fi</span>
+                    <button class="wifi-scan-btn" id="scan-btn" onclick="scanWifi()" disabled>
+                        🔍 扫描
+                    </button>
+                </div>
+                
+                <div class="wifi-list" id="wifi-list">
+                    <div class="wifi-scan-status" id="scan-status">
+                        点击「扫描」查看附近的 Wi-Fi 网络
+                    </div>
+                </div>
+                
+                <label class="input-label">Wi-Fi 名称 (SSID)</label>
+                <input type="text" id="wifi-ssid" placeholder="请输入 Wi-Fi 名称或从上方选择">
+                
+                <label class="input-label">Wi-Fi 密码</label>
+                <input type="password" id="wifi-password" placeholder="请输入 Wi-Fi 密码">
+                
+                <button class="btn btn-success" id="wifi-send-btn" onclick="sendWifiConfig()" disabled>
+                    📡 发送 Wi-Fi 配置
+                </button>
+            </div>
+            
+            <p class="hint">
+                首次使用时，请先连接设备并配置 Wi-Fi
+                <br>
+                设备会自动保存 Wi-Fi 信息，下次开机自动连接
+            </p>
+        </div>
+        
+        <!-- 坐标发送 Tab -->
+        <div id="tab-coord" class="tab-content">
+            <div class="card">
+                <div class="status-row">
+                    <span class="status-label">设备连接</span>
+                    <span class="status-value disconnected" id="coord-ble-status">未连接</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">GPS 状态</span>
+                    <span class="status-value disconnected" id="gps-status">未获取</span>
+                </div>
+                <button class="btn btn-primary" id="coord-connect-btn" onclick="connectDevice()">
+                    🔗 连接设备
+                </button>
+            </div>
+            
+            <div class="card">
+                <div class="coord-display">
+                    <div class="coord-value" id="coord-value">--.--, --.--</div>
+                    <div class="coord-label">当前坐标 (纬度, 经度)</div>
+                </div>
+                <button class="btn btn-secondary" onclick="getLocation()">
+                    📍 获取当前位置
+                </button>
+            </div>
+            
+            <div class="card">
+                <button class="btn btn-success" id="send-btn" onclick="sendCoord()" disabled>
+                    🚀 发送坐标到设备
+                </button>
+                <div class="device-info" id="device-info"></div>
+            </div>
+            
+            <p class="hint">
+                使用方法：
+                <br>
+                1. 设备进入「新增标记点」页面
+                <br>
+                2. 点击连接设备，选择 ZoneWar
+                <br>
+                3. 获取当前位置后发送坐标
+            </p>
+        </div>
+    </div>
+    
+    <div class="toast" id="toast"></div>
+    <script>
+        // BLE UUIDs (和固件保持一致)
+        const SERVICE_UUID = '12345678-1234-5678-1234-56789abcdef0';
+        const CHAR_COORD_UUID = '12345678-1234-5678-1234-56789abcdef1';
+        const CHAR_DEVICE_UUID = '12345678-1234-5678-1234-56789abcdef2';
+        const CHAR_WIFI_UUID = '12345678-1234-5678-1234-56789abcdef3';
+        const CHAR_WIFI_SCAN_UUID = '12345678-1234-5678-1234-56789abcdef4';
+        
+        let bleDevice = null;
+        let coordChar = null;
+        let wifiChar = null;
+        let wifiScanChar = null;
+        let currentLat = null;
+        let currentLng = null;
+        let currentTab = 'wifi';
+        
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById('tab-' + tab).classList.add('active');
+        }
+        
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 2500);
+        }
+        
+        function updateBleStatus(connected) {
+            const statusEls = ['wifi-ble-status', 'coord-ble-status'];
+            const btnEls = ['wifi-connect-btn', 'coord-connect-btn'];
+            
+            statusEls.forEach(id => {
+                const el = document.getElementById(id);
+                el.textContent = connected ? '已连接' : '未连接';
+                el.className = 'status-value ' + (connected ? 'connected' : 'disconnected');
+            });
+            
+            btnEls.forEach(id => {
+                document.getElementById(id).textContent = connected ? '🔗 断开连接' : '🔗 连接设备';
+            });
+            
+            document.getElementById('wifi-send-btn').disabled = !connected;
+            document.getElementById('scan-btn').disabled = !connected;
+            document.getElementById('send-btn').disabled = !connected || currentLat === null;
+        }
+        
+        async function connectDevice() {
+            if (bleDevice && bleDevice.gatt.connected) {
+                bleDevice.gatt.disconnect();
+                bleDevice = null;
+                coordChar = null;
+                wifiChar = null;
+                wifiScanChar = null;
+                updateBleStatus(false);
+                showToast('已断开连接');
+                return;
+            }
+            
+            try {
+                showToast('正在搜索设备...');
+                bleDevice = await navigator.bluetooth.requestDevice({
+                    filters: [{ name: 'ZoneWar' }],
+                    optionalServices: [SERVICE_UUID]
+                });
+                
+                showToast('正在连接...');
+                const server = await bleDevice.gatt.connect();
+                const service = await server.getPrimaryService(SERVICE_UUID);
+                
+                try {
+                    coordChar = await service.getCharacteristic(CHAR_COORD_UUID);
+                } catch(e) { console.warn('coord char not found'); }
+                
+                try {
+                    wifiChar = await service.getCharacteristic(CHAR_WIFI_UUID);
+                } catch(e) { console.warn('wifi char not found'); }
+                
+                try {
+                    wifiScanChar = await service.getCharacteristic(CHAR_WIFI_SCAN_UUID);
+                } catch(e) { console.warn('wifi scan char not found'); }
+                
+                try {
+                    const deviceChar = await service.getCharacteristic(CHAR_DEVICE_UUID);
+                    const data = await deviceChar.readValue();
+                    const decoder = new TextDecoder('utf-8');
+                    const info = decoder.decode(data);
+                    const parts = info.split('|');
+                    const teamMap = { red: '红队', blue: '蓝队', none: '无' };
+                    const teamClass = { red: 'team-red', blue: 'team-blue', none: '' };
+                    const team = parts[1] || 'none';
+                    document.getElementById('device-info').innerHTML = 
+                        `设备: <b>${parts[0]}</b> | 战队: <b class="${teamClass[team]}">${teamMap[team] || team}</b>`;
+                } catch(e) { console.warn('device info read failed'); }
+                
+                bleDevice.addEventListener('gattserverdisconnected', () => {
+                    bleDevice = null;
+                    coordChar = null;
+                    wifiChar = null;
+                    wifiScanChar = null;
+                    updateBleStatus(false);
+                    showToast('设备已断开');
+                });
+                
+                updateBleStatus(true);
+                showToast('连接成功！');
+                
+            } catch (err) {
+                console.error(err);
+                showToast('连接失败: ' + err.message);
+                bleDevice = null;
+            }
+        }
+        
+        function getSignalIcon(rssi) {
+            if (rssi >= -50) return '📶';
+            if (rssi >= -60) return '📶';
+            if (rssi >= -70) return '📶';
+            if (rssi >= -80) return '📶';
+            return '📶';
+        }
+        
+        function getSignalLevel(rssi) {
+            if (rssi >= -50) return 4;
+            if (rssi >= -60) return 3;
+            if (rssi >= -70) return 2;
+            if (rssi >= -80) return 1;
+            return 0;
+        }
+        
+        function renderWifiList(aps) {
+            const listEl = document.getElementById('wifi-list');
+            listEl.classList.add('show');
+            
+            if (!aps || aps.length === 0) {
+                listEl.innerHTML = '<div class="wifi-scan-status">未找到 Wi-Fi 网络</div>';
+                return;
+            }
+            
+            // 按信号强度排序
+            aps.sort((a, b) => b.r - a.r);
+            
+            let html = '';
+            for (const ap of aps) {
+                const level = getSignalLevel(ap.r);
+                const bars = '█'.repeat(level) + '░'.repeat(4 - level);
+                const lockIcon = ap.e ? '🔒' : '🔓';
+                html += `
+                    <div class="wifi-item" onclick="selectWifi('${ap.s.replace(/'/g, "\\'")}')">
+                        <div class="wifi-item-info">
+                            <div class="wifi-item-ssid">${escapeHtml(ap.s)}</div>
+                            <div class="wifi-item-desc">信号 ${bars} ${ap.r} dBm</div>
+                        </div>
+                        <span class="wifi-signal">${lockIcon}</span>
+                    </div>
+                `;
+            }
+            listEl.innerHTML = html;
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function selectWifi(ssid) {
+            document.getElementById('wifi-ssid').value = ssid;
+            document.getElementById('wifi-password').focus();
+            showToast('已选择: ' + ssid);
+        }
+        
+        async function scanWifi() {
+            if (!wifiScanChar) {
+                // 兼容旧固件，没有扫描功能
+                showToast('当前固件不支持扫描，请手动输入');
+                return;
+            }
+            
+            const scanBtn = document.getElementById('scan-btn');
+            const listEl = document.getElementById('wifi-list');
+            
+            scanBtn.disabled = true;
+            scanBtn.textContent = '扫描中...';
+            listEl.classList.add('show');
+            listEl.innerHTML = '<div class="wifi-scan-status"><span class="spinner"></span>正在扫描附近 Wi-Fi...</div>';
+            
+            try {
+                // 发送扫描命令
+                const encoder = new TextEncoder();
+                await wifiScanChar.writeValue(encoder.encode('SCAN'));
+                
+                // 轮询等待扫描完成（最多等 10 秒）
+                const decoder = new TextDecoder('utf-8');
+                let result = [];
+                
+                for (let i = 0; i < 20; i++) {
+                    await new Promise(r => setTimeout(r, 500));
+                    
+                    try {
+                        const data = await wifiScanChar.readValue();
+                        const jsonStr = decoder.decode(data);
+                        console.log('Scan result:', jsonStr);
+                        
+                        const aps = JSON.parse(jsonStr);
+                        if (Array.isArray(aps) && aps.length > 0) {
+                            result = aps;
+                            break;
+                        }
+                        // 空数组可能是还没扫完，继续等
+                        if (i < 5) continue;
+                    } catch(e) {
+                        console.warn('read scan result failed:', e);
+                    }
+                }
+                
+                if (result.length > 0) {
+                    renderWifiList(result);
+                    showToast(`找到 ${result.length} 个 Wi-Fi 网络`);
+                } else {
+                    listEl.innerHTML = '<div class="wifi-scan-status">未找到 Wi-Fi 网络</div>';
+                    showToast('未找到 Wi-Fi 网络');
+                }
+                
+            } catch (err) {
+                console.error(err);
+                listEl.innerHTML = `<div class="wifi-scan-status">扫描失败: ${err.message}</div>`;
+                showToast('扫描失败');
+            } finally {
+                scanBtn.disabled = false;
+                scanBtn.textContent = '🔍 重新扫描';
+            }
+        }
+        
+        function getLocation() {
+            if (!navigator.geolocation) {
+                showToast('浏览器不支持定位');
+                return;
+            }
+            
+            document.getElementById('gps-status').textContent = '获取中...';
+            document.getElementById('gps-status').className = 'status-value';
+            
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    currentLat = pos.coords.latitude;
+                    currentLng = pos.coords.longitude;
+                    document.getElementById('coord-value').textContent = 
+                        `${currentLat.toFixed(6)}, ${currentLng.toFixed(6)}`;
+                    document.getElementById('gps-status').textContent = '已获取';
+                    document.getElementById('gps-status').className = 'status-value connected';
+                    
+                    if (coordChar && bleDevice && bleDevice.gatt.connected) {
+                        document.getElementById('send-btn').disabled = false;
+                    }
+                    showToast('坐标已获取');
+                },
+                (err) => {
+                    document.getElementById('gps-status').textContent = '失败';
+                    document.getElementById('gps-status').className = 'status-value disconnected';
+                    showToast('定位失败: ' + err.message);
+                },
+                { enableHighAccuracy: true, timeout: 10000 }
+            );
+        }
+        
+        async function sendCoord() {
+            if (!coordChar || currentLat === null) return;
+            
+            try {
+                const data = `${currentLat.toFixed(7)},${currentLng.toFixed(7)}`;
+                const encoder = new TextEncoder();
+                await coordChar.writeValue(encoder.encode(data));
+                showToast('坐标已发送！');
+            } catch (err) {
+                console.error(err);
+                showToast('发送失败: ' + err.message);
+            }
+        }
+        
+        async function sendWifiConfig() {
+            if (!wifiChar) {
+                showToast('设备不支持 Wi-Fi 配网');
+                return;
+            }
+            
+            const ssid = document.getElementById('wifi-ssid').value.trim();
+            const password = document.getElementById('wifi-password').value;
+            
+            if (!ssid) {
+                showToast('请输入 Wi-Fi 名称');
+                return;
+            }
+            
+            try {
+                const data = `${ssid};${password}`;
+                const encoder = new TextEncoder();
+                await wifiChar.writeValue(encoder.encode(data));
+                showToast('Wi-Fi 配置已发送，设备正在连接...');
+            } catch (err) {
+                console.error(err);
+                showToast('发送失败: ' + err.message);
+            }
+        }
+    </script>
+</body>
+</html>
